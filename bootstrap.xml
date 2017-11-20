@@ -3,12 +3,13 @@
   <mgt-config>
     <users>
       <entry name="admin">
-        <phash>$1$uoeqqnim$Jjt.85tgmHw0wDYzs5W6D0</phash>
+        <phash>$1$gbmmnnbf$H57v.PmfBb0KaplmSUY2J0</phash>
         <permissions>
           <role-based>
             <superuser>yes</superuser>
           </role-based>
         </permissions>
+        <public-key>c3NoLXJzYSBBQUFBQjNOemFDMXljMkVBQUFBREFRQUJBQUFCQVFDT0t1Z2hiR2FybkFmTkxwVS93dEdYT1RwUjMyOE00bEV1QkRYK1E1L0pFbnQ0QXZ4N3BUYzdpRmZ0WnpvaGNTSGQ2MmpjQUlGc01MS1VYMWw4cFN1TkNYczVwbHFmVmp1YzhMbVZ5WEdTTFM3N0VOeVI3VGJibGE3bVpEZTBWU25oWDJqcU1KOEV4dWFCYWpZU2xjVDhwUG1zY1ZxWDRoYjBZejg3cTdpTlJWTlY2dk5DR3FqcG9pdU5yRE5pYmFhVkZxV3VSYmFBQmhoeDFDWHlDYUdEUTlmVHNMUzRlM1ZKQkRxdHd1MzBVaVlGTWc3MzBSNFk4WjU4SnVjQjUzNmhDSWhzWTN5VFkwME1TRTFFNlcxaHpUdWdkNkVGUmRiQlF4SVcvSFRUSEpuRWxWS3J6dzNOQ21nY1FCc2xqaE45RTI2VVhRSnhXU1FiL2Fwc1dwUGwgQVdTLUtleS1QYWlyCg==</public-key>
       </entry>
       <entry name="apiuser">
         <permissions>
@@ -88,7 +89,7 @@
         <entry name="aws-http-xff">
           <server>
             <entry name="AWS">
-              <address>bw301q3p0i.execute-api.us-west-2.amazonaws.com</address>
+              <address>dmjhoy2vhk.execute-api.us-west-2.amazonaws.com</address>
               <http-method>POST</http-method>
               <protocol>HTTPS</protocol>
               <port>443</port>
@@ -97,7 +98,7 @@
           <format>
             <threat>
               <name>send_threat_session_id</name>
-              <url-format>/LATEST</url-format>
+              <url-format>/test/register</url-format>
               <headers>
                 <entry name="content-type">
                   <value>application/json</value>

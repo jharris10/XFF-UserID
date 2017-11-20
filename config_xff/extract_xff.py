@@ -17,15 +17,13 @@ dynamodb_resource = resource('dynamodb')
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# Dynamodb Details
-#table_name = "xff"
+
 table_name = os.environ['dbTable']
 
-# Firewall Details
-#gwMgmtIp = "50.112.33.239"
+
 
 gwMgmtIp = os.environ['fwMgtIp']
-apiKey = "LUFRPT1KeTRJbGtYSUluTVRaN1M2UzRLZ2NpaHB4S1E9T3FZUXRTQ3FNSnoyenk2S1NuMTdGOEdEVlRhVFYxd0xLYy9oVVM5MnJ0OD0="
+apiKey = "LUFRPT1ETWtoUHduU0R5S0JpY0tvdktnQUFXNWlXR0k9TTlmMkhSMktNM25uM3hscXNnUXV3Zz09"
 
 username = "baduser"
 useridtimeout = "20"
