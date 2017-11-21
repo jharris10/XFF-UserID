@@ -1,4 +1,3 @@
-import json
 import boto3
 import botocore
 import time
@@ -18,11 +17,12 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
+# Dynamodb tablename and the firewall management IP are passed in from the CFT template
+
 table_name = os.environ['dbTable']
+fwMgmtIP = os.environ['fwMgtIp']
 
 
-
-gwMgmtIp = os.environ['fwMgtIp']
 apiKey = "LUFRPT1ETWtoUHduU0R5S0JpY0tvdktnQUFXNWlXR0k9TTlmMkhSMktNM25uM3hscXNnUXV3Zz09"
 
 username = "baduser"
@@ -33,19 +33,19 @@ ctx.check_hostname = False
 ctx.verify_mode = ssl.CERT_NONE
 aggressive_mode = "DISABLE"
 
-fw_cmd1 = "https://" + gwMgmtIp + "/api/?type=user-id&action=set&key=" + apiKey + "&cmd=" + "%3Cuid-message%3E%3Cversion%3E1.0%3C/version%3E%3Ctype%3Eupdate%3C/type%3E%3Cpayload%3E%3Clogin%3E%3Centry%20name=%22" + username + "%22%20ip=%22"
+fw_cmd1 = "https://" + fwMgmtIP + "/api/?type=user-id&action=set&key=" + apiKey + "&cmd=" + "%3Cuid-message%3E%3Cversion%3E1.0%3C/version%3E%3Ctype%3Eupdate%3C/type%3E%3Cpayload%3E%3Clogin%3E%3Centry%20name=%22" + username + "%22%20ip=%22"
 fw_cmd2 = "%22%20timeout=%22" + useridtimeout + "%22%3E%3C/entry%3E%3C/login%3E%3C/payload%3E%3C/uid-message%3E"
 
-fw_url_log_cmd1 = "https://" + gwMgmtIp + "/api/?type=log&log-type=url&key=" + apiKey + "&query=((sessionid%20eq%20'"
+fw_url_log_cmd1 = "https://" + fwMgmtIP + "/api/?type=log&log-type=url&key=" + apiKey + "&query=((sessionid%20eq%20'"
 fw_url_log_cmd2 = "')%20and%20(natsport%20eq%20'"
 fw_url_log_cmd3 = "')%20and%20(receive_time%20geq%20'"
 fw_url_log_cmd4 = "'))"
 
-# fw_url_log_cmd1 = "https://"+gwMgmtIp+"/api/?type=log&log-type=url&key="+apiKey+"&query=((sessionid%20eq%20'"
+# fw_url_log_cmd1 = "https://"+fwMgmtIP+"/api/?type=log&log-type=url&key="+apiKey+"&query=((sessionid%20eq%20'"
 # fw_url_log_cmd2 = "')%20and%20(natsport%20eq%20'"
 # fw_url_log_cmd3 = "'))"
 
-fw_url_xff_cmd = "https://" + gwMgmtIp + "/api/?type=log&action=get&key=" + apiKey + "&job-id="
+fw_url_xff_cmd = "https://" + fwMgmtIP + "/api/?type=log&action=get&key=" + apiKey + "&job-id="
 
 
 def ttl_status(table_name):

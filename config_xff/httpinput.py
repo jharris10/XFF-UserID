@@ -4,206 +4,128 @@ import botocore
 import time
 from boto3 import resource
 from boto3 import client
+from boto3.dynamodb.conditions import Key, Attr
 import urllib2
 import ssl
-from xml.etree import ElementTree
+import os
+import logging
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 client = boto3.client('dynamodb')
 dynamodb_resource = resource('dynamodb')
-table_name = os.environ['dbTable']
-
-# Firewall Details
-gwMgmtIp = os.environ['fwMgtIp']
-apiKey = "LUFRPT1ETWtoUHduU0R5S0JpY0tvdktnQUFXNWlXR0k9TTlmMkhSMktNM25uM3hscXNnUXV3Zz09"
-
-username = "baduser"
-useridtimeout = "20"
-
 ctx = ssl.create_default_context()
 ctx.check_hostname = False
 ctx.verify_mode = ssl.CERT_NONE
-aggressive_mode = "DISABLE"
 
-fw_cmd1 = "https://" + gwMgmtIp + "/api/?type=user-id&action=set&key=" + apiKey + "&cmd=" + "%3Cuid-message%3E%3Cversion%3E1.0%3C/version%3E%3Ctype%3Eupdate%3C/type%3E%3Cpayload%3E%3Clogin%3E%3Centry%20name=%22" + username + "%22%20ip=%22"
-fw_cmd2 = "%22%20timeout=%22" + useridtimeout + "%22%3E%3C/entry%3E%3C/login%3E%3C/payload%3E%3C/uid-message%3E"
+table_name = os.environ['dbTable']
+# gwMgmtIp = "ec2-52-32-47-26.us-west-2.compute.amazonaws.com"
+# apiKey = "LUFRPT1BeDJOUWtoSUp5UjFXWVU5TDBTMk1OanFMeFk9ZXFIMVoxUjltVWx2NUpFUWxoejdxTEYrUFA1S0RZTUV6ejRNUGYwdmYzQT0="
+username = "baduser"
+useridtimeout = "20"
+gwMgmtIp = os.environ['fwMgtIp']
+apiKey = "LUFRPT1KeTRJbGtYSUluTVRaN1M2UzRLZ2NpaHB4S1E9T3FZUXRTQ3FNSnoyenk2S1NuMTdGOEdEVlRhVFYxd0xLYy9oVVM5MnJ0OD0="
 
-fw_url_log_cmd1 = "https://" + gwMgmtIp + "/api/?type=log&log-type=url&key=" + apiKey + "&query=((sessionid%20eq%20'"
-fw_url_log_cmd2 = "')%20and%20(natsport%20eq%20'"
-fw_url_log_cmd3 = "')%20and%20(receive_time%20geq%20'"
-fw_url_log_cmd4 = "'))"
+fw_cmd1 = "https://" + gwMgmtIp + "/api/?type=user-id&action=set&key=" + apiKey + "&cmd=" + "%3Cuid-message%3E%3Cversion%3E1.0%3C/version%3E%3Ctype%3Eupdate%3C/type%3E%3Cpayload%3E%3Clogin%3E"
+# uid_payload1 = "%3Centry%20name=%22"+username+"%22%20ip=%22"
 
-# fw_url_log_cmd1 = "https://"+gwMgmtIp+"/api/?type=log&log-type=url&key="+apiKey+"&query=((sessionid%20eq%20'"
-# fw_url_log_cmd2 = "')%20and%20(natsport%20eq%20'"
-# fw_url_log_cmd3 = "'))"
-
-fw_url_xff_cmd = "https://" + gwMgmtIp + "/api/?type=log&action=get&key=" + apiKey + "&job-id="
-
-
-def ttl_status(table_name):
-    """
-    Validate the TTL status on the table.
-    """
-    response = client.describe_time_to_live(TableName=table_name)
-    if response['TimeToLiveDescription']['TimeToLiveStatus'] == "DISABLED":
-        return "DISABLED"
-    return "ENABLED"
-
-
-def update_ttl_status(table_name):
-    """
-    Enable TTL Specification on the table and modify the TTL attribute to "expirationdate" column name from the table
-    """
-    response = client.update_time_to_live(TableName=table_name,
-                                          TimeToLiveSpecification={'Enabled': True, 'AttributeName': 'expirationdate'})
-    return response
-
-
-def add_item(table_name, col_dict):
-    """
-    Add one item (row) to table. col_dict is a dictionary {col_name: value}.
-    """
-    table = dynamodb_resource.Table(table_name)
-    response = table.put_item(Item=col_dict)
-
-    return response
-
-
-def write_to_s3(line):
-    s3 = boto3.resource('s3')
-    exists = False
-    print "Writing to S3"
-    try:
-        s3.Object('xffholder', 'xff.txt').load()
-    except botocore.exceptions.ClientError as e:
-        if e.response['Error']['Code'] == "404":
-            exists = False
-            s3.Object('xffholder', 'xff.txt').put(Body=line)
-            object_acl = s3.ObjectAcl('xffholder', 'xff.txt')
-            response = object_acl.put(ACL='public-read')
-        else:
-            raise
-    else:
-        obj = s3.Object('xffholder', 'xff.txt')
-        contents = obj.get()['Body'].read()
-        contents += "\n" + line
-        obj.put(Body=contents)
-        object_acl = s3.ObjectAcl('xffholder', 'xff.txt')
-        response = object_acl.put(ACL='public-read')
-
-    return
+uid_payload1 = "%3Centry%20name=%22"
+uid_payload2 = "%22%20ip=%22"
+uid_payload3 = "%22%20timeout=%22" + useridtimeout + "%22%3E%3C/entry%3E"
+fw_cmd2 = "%3C/login%3E%3C/payload%3E%3C/uid-message%3E"
 
 
 def check_item_count(table_name):
     table = dynamodb_resource.Table(table_name)
-    count = table.scan()['Count']
+    response = table.scan(FilterExpression=Attr('notes').eq('senduid'))
+    count = len(response['Items'])
+    # count = table.scan()['Count']
     return count
 
 
-def write_to_db(ipaddress):
+def read_from_db():
     """
-    Write IP Address, Username, Creation and Expiration Date to Dynamo DB
+    Read from DB and send a list of IP address for which UID mappings need to be sent
     """
-    print "Writing to DB"
-    creationdate = int(time.time())
-    expirationdate = int(time.time()) + 86400
-    col_dict = {"username": ipaddress, "ipaddress": ipaddress, "creationdate": creationdate,
-                "expirationdate": expirationdate, "notes": "senduid"}
-    add_item(table_name, col_dict)
-    line = ipaddress + "," + str(creationdate)
-    return line
+    ipaddress_list = []
+    table = dynamodb_resource.Table(table_name)
+    response = table.scan(FilterExpression=Attr('notes').eq('senduid'))
+
+    for user in response['Items']:
+        ipaddress_list.append(user['ipaddress'])
+
+    return ipaddress_list
+
+
+def update_db(ipaddress_list):
+    """
+    Update notes attribute to 'uidsent' once the UID mapping is sent
+    """
+    table = dynamodb_resource.Table(table_name)
+    for ip in ipaddress_list:
+        table.update_item(Key={'username': ip}, UpdateExpression="set notes = :n",
+                          ExpressionAttributeValues={':n': 'uidsent'}, ReturnValues="UPDATED_NEW")
+
+    return
+
+
+def delete_from_db(ipaddress_list):
+    """
+    Delete from DB once UID mappings are sent
+    """
+    table = dynamodb_resource.Table(table_name)
+    response = table.scan(FilterExpression=Attr('notes').eq('senduid'))
+
+    for ip in ipaddress_list:
+        table.delete_item(Key={'username': ip})
+
+    return
 
 
 def uid_mapper(ipaddress, ctx):
-    cmd = fw_cmd1 + ipaddress + fw_cmd2
+    uidp = ""
+    for ip in ipaddress:
+        uid = uid_payload1 + ip + uid_payload2 + ip + uid_payload3
+        uidp += uid
+
+    cmd = fw_cmd1 + uidp + fw_cmd2
 
     response = urllib2.urlopen(cmd, context=ctx, timeout=5).read()
     print response
     return
 
 
-def url_log_jobid_extracter1(sessionid, natsport, rxtime, ctx):
-    cmd = fw_url_log_cmd1 + str(sessionid) + fw_url_log_cmd2 + str(natsport) + fw_url_log_cmd3 + rxtime.split(" ")[
-        0] + "%20" + rxtime.split(" ")[1] + fw_url_log_cmd4
-    print "The command to extract jobid is", cmd
+def grp_mapper(ctx):
+    fw_cmd1 = "https://" + gwMgmtIp + "/api/?type=user-id&action=set&key=" + apiKey + "&cmd=" + "%3Cuid-message%3E%3Cversion%3E1.0%3C/version%3E%3Ctype%3Eupdate%3C/type%3E%3Cpayload%3E%3Cgroups%3E%3Centry%20name=%22badusergroup%22%3E%3Cmembers%3E"
+    grp_payload1 = "%3Centry%20name=%22"
+    grp_payload2 = "%22/%3E"
+    fw_cmd2 = "%3C/members%3E%3C/entry%3E%3C/groups%3E%3C/payload%3E%3C/uid-message%3E"
+
+    table = dynamodb_resource.Table(table_name)
+    response = table.scan()
+
+    uidp = ""
+    for user in response['Items']:
+        uid = grp_payload1 + user['ipaddress'] + grp_payload2
+        uidp += uid
+
+    cmd = fw_cmd1 + uidp + fw_cmd2
+
     response = urllib2.urlopen(cmd, context=ctx, timeout=5).read()
-    dom = ElementTree.fromstring(response)
-
-    jobid = dom[0].find('job').text
-    return jobid
-
-
-def url_log_jobid_extracter(sessionid, natsport, ctx):
-    cmd = fw_url_log_cmd1 + str(sessionid) + fw_url_log_cmd2 + str(natsport) + fw_url_log_cmd3
-    print "The command to extract jobid is", cmd
-    response = urllib2.urlopen(cmd, context=ctx, timeout=5).read()
-    dom = ElementTree.fromstring(response)
-
-    jobid = dom[0].find('job').text
-    return jobid
-
-
-def xff_extracter(jobid, ctx):
-    cmd = fw_url_xff_cmd + str(jobid)
-    print "The command to extract XFF is", cmd
-    response = urllib2.urlopen(cmd, context=ctx, timeout=5).read()
-    dom = ElementTree.fromstring(response)
-
-    if dom[0][1][0].attrib['count'] == "0":
-        return "RETRY"
-    else:
-        xff = dom.find('./result/log/logs/entry/xff').text
-        return xff
+    print response
+    return
 
 
 print('Loading Function')
 
 
-def httpinput_lambda_handler(event, context):
-    count = 0
-
-    sessionid = event['sessionid']
-    print('Session id is:', sessionid)
-
-    natsport = event['natsrcport']
-    print("NAT SPORT is:", natsport)
-
-    rxtime = event['rxtime']
-    print("Receive time is:", rxtime)
-
-    if ttl_status(table_name) == "DISABLED":
-        update_ttl_status(table_name)
-
-    while count < 5:
-        jobid = url_log_jobid_extracter1(sessionid, natsport, rxtime, ctx)
-        print('Job id is:', jobid)
-        print("Sleeping for 2 second...")
-        time.sleep(3)
-        xff = xff_extracter(jobid, ctx)
-        if xff == "RETRY":
-            count += 1
-        else:
-            count = 6
-            print("XFF extracted is", xff)
-            line = write_to_db(xff)
-            print("Line is: ", line)
-            write_to_s3(line)
-
-            ###ipaddress = event['ipaddress']
-
-            ###print("The XFF header IP is ", ipaddress)
-            # write_to_s3(ipaddress)
-
-
-
-            # currtime = int(time.time())
-            # fiveminago = currtime - 300
-
-            # if check_item_count(table_name) > 1:
-
-            # write_to_db(ipaddress)
-            # if aggressive_mode == "ENABLE":
-            #   uid_mapper(ipaddress,ctx)
-            # else:
-            #   write_to_db(ipaddress)
-
+def lambda_handler(event, context):
+    count = check_item_count(table_name)
+    if count > 0:
+        ipaddress_list = read_from_db()
+        grp_mapper(ctx)
+        uid_mapper(ipaddress_list, ctx)
+        update_db(ipaddress_list)
+        # delete_from_db(ipaddress_list)
     return 'Completed uid mapping'
